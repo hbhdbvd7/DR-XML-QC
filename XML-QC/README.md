@@ -1,4 +1,4 @@
-﻿# XML-QC
+# XML-QC
 
 DaVinci Resolve XML conform QC tool with a Tkinter GUI.
 
@@ -19,6 +19,23 @@ XML-QC/
   XML-QC.py
   local_conform_qc/
 ```
+
+## Environment Requirements
+
+- Windows with DaVinci Resolve installed
+- Resolve scripting access available to the running Resolve instance
+- No extra Python packages are required
+- `ffprobe` is recommended in `PATH` for media frame-rate statistics and codec-based proxy detection
+
+The tool tries to import `DaVinciResolveScript` directly from the Resolve script runtime first. If that path is unavailable, it falls back to:
+
+- `RESOLVE_SCRIPT_API`
+- `RESOLVE_SCRIPT_LIB`
+- `C:\ProgramData\Blackmagic Design\DaVinci Resolve\Support\Developer\Scripting\Modules`
+
+In a normal Resolve installation, manual environment-variable setup is usually not required.
+
+If `ffprobe` is missing, the main flow still works, but media frame-rate statistics may become `unknown`, and ProRes Proxy files cannot be excluded by codec inspection.
 
 ## Basic Use
 
