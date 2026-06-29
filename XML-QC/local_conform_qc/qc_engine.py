@@ -263,6 +263,8 @@ def _compare_pair(
         timeline_value = getattr(timeline_item, field_name)
         if xml_value is None or timeline_value is None:
             continue
+        if field_name in {"start", "end"} and _frame_suffix_matches(xml_value, timeline_value):
+            continue
         if xml_value != timeline_value:
             comparison.issues.append(
                 Issue(
@@ -386,9 +388,15 @@ def calculate_match_success_percentage(
     total = len(xml_result.clips)
     if total == 0:
         return 0.0
+    comparisons_by_xml = _comparisons_by_xml_clip_index(qc_result)
     failed_clip_indexes: set[int] = set()
     for match in matches:
         if match.status in {"missing", "multiple_candidates"}:
+            if match.status == "missing" and _ignore_empty_path_missing_match(
+                match,
+                comparisons_by_xml.get(match.clip.index),
+            ):
+                continue
             failed_clip_indexes.add(match.clip.index)
     for comparison in qc_result.comparisons:
         issue_codes = {issue.code for issue in comparison.issues}
@@ -410,7 +418,13 @@ def build_import_difference_sections(
 ) -> dict[str, object]:
     """Build problem-only Chinese report sections in the requested order."""
     match_list = list(matches)
-    missing_rows = [_missing_media_row_cn(match) for match in match_list if match.status == "missing"]
+    comparisons_by_xml = _comparisons_by_xml_clip_index(qc_result)
+    missing_rows = [
+        _missing_media_row_cn(match)
+        for match in match_list
+        if match.status == "missing"
+        and not _ignore_empty_path_missing_match(match, comparisons_by_xml.get(match.clip.index))
+    ]
     missing_rows.extend(
         _comparison_row_cn(comparison)
         for comparison in qc_result.comparisons
@@ -504,8 +518,14 @@ def collect_problem_issues(
 ) -> list[Issue]:
     """Collect report issues; source in/out mismatches are warnings."""
     issues: list[Issue] = []
+    comparisons_by_xml = _comparisons_by_xml_clip_index(qc_result)
     for match in matches:
         if match.status in {"missing", "multiple_candidates"}:
+            if match.status == "missing" and _ignore_empty_path_missing_match(
+                match,
+                comparisons_by_xml.get(match.clip.index),
+            ):
+                continue
             issues.extend(_localized_issue(issue) for issue in match.issues)
     issues.extend(_localized_issue(issue) for issue in import_result.issues)
     issues.extend(_localized_issue(issue) for issue in timeline_result.issues)
@@ -706,6 +726,30 @@ def _compound_xml_issues(xml_issues: Iterable[Issue]) -> list[Issue]:
 
 def _normalize_name(value: str | None) -> str:
     return (value or "").strip().casefold()
+
+
+def _frame_suffix_matches(xml_value: int, timeline_value: int) -> bool:
+    xml_digits = str(abs(int(xml_value)))
+    timeline_digits = str(abs(int(timeline_value)))
+    return bool(xml_digits) and timeline_digits.endswith(xml_digits)
+
+
+def _comparisons_by_xml_clip_index(qc_result: ConformQcResult) -> dict[int, ClipComparison]:
+    return {
+        comparison.xml_clip_index: comparison
+        for comparison in qc_result.comparisons
+        if comparison.xml_clip_index is not None
+    }
+
+
+def _ignore_empty_path_missing_match(match: MediaMatch, comparison: ClipComparison | None) -> bool:
+    if match.status != "missing":
+        return False
+    if match.clip.decoded_path or match.clip.pathurl:
+        return False
+    if comparison is None:
+        return False
+    return _normalize_name(match.clip.name) == _normalize_name(comparison.timeline_name)
 
 
 def _xml_timeline_frame_value(xml_clip: XmlClip, field_name: str) -> int | None:

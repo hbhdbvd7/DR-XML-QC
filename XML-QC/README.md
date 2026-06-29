@@ -1,4 +1,4 @@
-# XML-QC
+﻿# XML-QC
 
 DaVinci Resolve XML conform QC tool with a Tkinter GUI.
 
