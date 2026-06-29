@@ -1,4 +1,4 @@
-﻿"""End-to-end local conform QC pipeline."""
+"""End-to-end local conform QC pipeline."""
 
 from __future__ import annotations
 
@@ -7,11 +7,7 @@ from datetime import datetime
 from pathlib import Path
 import shutil
 
-from .media_scanner import (
-    get_import_media_paths,
-    match_xml_clips_to_media,
-    scan_project_media_with_stats,
-)
+from .media_scanner import get_import_media_paths, match_xml_clips_to_media, scan_project_media_with_stats
 from .models import ReportData, ToolConfig
 from .qc_engine import (
     build_import_difference_sections,
@@ -91,7 +87,7 @@ def _run_one_xml(
     timeline_result = read_current_timeline_items(project)
     qc_result = compare_timeline(xml_result, timeline_result)
     sections = build_import_difference_sections(xml_result, matches, import_result, timeline_result, qc_result)
-    sections["\u7d20\u6750\u5e27\u7387\u7edf\u8ba1"] = frame_rate_rows
+    sections["素材帧率统计"] = frame_rate_rows
     problem_issues = collect_problem_issues(matches, import_result, timeline_result, qc_result)
     match_counts = Counter(match.status for match in matches)
 
@@ -99,26 +95,26 @@ def _run_one_xml(
         status=qc_result.status,
         summary={
             "report_name": report_name,
-            "\u6d4b\u8bd5XML": str(xml_path),
-            "\u5bfc\u5165XML\u4e34\u65f6\u526f\u672c": str(import_xml_path),
-            "\u9879\u76ee\u6839\u76ee\u5f55": str(project_root),
-            "\u955c\u5934\u7d20\u6750\u76ee\u5f55": str(media_root),
-            "Resolve\u9879\u76ee": project.GetName(),
-            "Resolve\u65f6\u95f4\u7ebf": import_result.timeline_name or timeline_result.timeline_name,
-            "XML\u5e27\u7387": xml_result.sequence_timebase,
-            "\u5339\u914d\u6210\u529f\u767e\u5206\u6bd4": f"{calculate_match_success_percentage(xml_result, matches, qc_result):.2f}%",
-            "XML\u7247\u6bb5\u603b\u6570": len(xml_result.clips),
-            "\u626b\u63cf\u524d\u5a92\u4f53\u6587\u4ef6\u603b\u6570": scan_result.total_candidates,
-            "\u4ee3\u7406\u7d20\u6750\u6392\u9664\u6570": scan_result.proxy_excluded,
-            "\u626b\u63cf\u7d20\u6750\u6587\u4ef6\u603b\u6570": len(media_files),
-            "\u5339\u914d\u7edf\u8ba1": dict(match_counts),
-            "\u8bf7\u6c42\u5bfc\u5165\u7d20\u6750\u6570": len(import_paths),
-            "Resolve\u5b9e\u9645\u5bfc\u5165\u7d20\u6750\u6570": len(import_result.imported_media),
-            "Resolve\u5bfc\u5165ref\u6570": len(import_result.imported_ref_media),
-            "Resolve\u65f6\u95f4\u7ebf\u7247\u6bb5\u6570": len(timeline_result.video_items),
-            "Resolve\u79bb\u7ebf\u7247\u6bb5\u6570": sum(1 for item in timeline_result.video_items if item.is_offline),
-            "QC\u72b6\u6001": qc_result.status,
-            "\u95ee\u9898\u6570\u91cf": len(problem_issues),
+            "测试XML": str(xml_path),
+            "导入XML临时副本": str(import_xml_path),
+            "项目根目录": str(project_root),
+            "镜头素材目录": str(media_root),
+            "Resolve项目": project.GetName(),
+            "Resolve时间线": import_result.timeline_name or timeline_result.timeline_name,
+            "XML帧率": xml_result.sequence_timebase,
+            "匹配成功百分比": f"{calculate_match_success_percentage(xml_result, matches, qc_result):.2f}%",
+            "XML片段总数": len(xml_result.clips),
+            "扫描前媒体文件总数": scan_result.total_candidates,
+            "代理素材排除数": scan_result.proxy_excluded,
+            "扫描素材文件总数": len(media_files),
+            "匹配统计": dict(match_counts),
+            "请求导入素材数": len(import_paths),
+            "Resolve实际导入素材数": len(import_result.imported_media),
+            "Resolve导入ref数": len(import_result.imported_ref_media),
+            "Resolve时间线片段数": len(timeline_result.video_items),
+            "Resolve离线片段数": sum(1 for item in timeline_result.video_items if item.is_offline),
+            "QC状态": qc_result.status,
+            "问题数量": len(problem_issues),
         },
         issues=problem_issues,
         sections=sections,

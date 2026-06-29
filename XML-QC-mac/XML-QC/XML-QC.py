@@ -14,6 +14,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 import traceback
 
+
 def _initial_script_dir() -> Path | None:
     file_name = globals().get("__file__")
     if file_name:
@@ -95,7 +96,7 @@ class XmlQcApp(tk.Tk):
         xml_frame = ttk.Frame(container)
         xml_frame.grid(row=1, column=1, sticky="ew", padx=8, pady=4)
         xml_frame.columnconfigure(0, weight=1)
-        self.xml_label_var = tk.StringVar(value="未选择时自动使用 项目根目录\\edit 下的 XML")
+        self.xml_label_var = tk.StringVar(value="未选择时自动使用 项目根目录/edit 下的 XML")
         ttk.Label(xml_frame, textvariable=self.xml_label_var, wraplength=460).grid(row=0, column=0, sticky="ew")
         xml_buttons = ttk.Frame(container)
         xml_buttons.grid(row=1, column=2, sticky="n", pady=4)
@@ -106,7 +107,7 @@ class XmlQcApp(tk.Tk):
         ttk.Entry(container, textvariable=self.media_root_var).grid(row=2, column=1, sticky="ew", padx=8, pady=4)
         ttk.Button(container, text="选择", command=self._pick_media_root).grid(row=2, column=2, pady=4)
 
-        hint = "未选择镜头路径时自动使用 项目根目录\\footage；ref 文件夹会自动导入 ref 媒体池。"
+        hint = "未选择镜头路径时自动使用 项目根目录/footage；ref 文件夹会自动导入 ref 媒体池。"
         ttk.Label(container, text=hint, foreground="#555").grid(row=3, column=1, sticky="w", padx=8, pady=(0, 8))
 
         ttk.Label(container, text="Resolve项目").grid(row=4, column=0, sticky="w", pady=4)
@@ -154,7 +155,7 @@ class XmlQcApp(tk.Tk):
 
     def _update_xml_label(self) -> None:
         if not self.xml_paths:
-            self.xml_label_var.set("未选择时自动使用 项目根目录\\edit 下的 XML")
+            self.xml_label_var.set("未选择时自动使用 项目根目录/edit 下的 XML")
             return
         self.xml_label_var.set("; ".join(path.name for path in self.xml_paths))
 

@@ -124,24 +124,20 @@ def scan_project_media_with_stats(
 
 
 def build_media_index(media_files: Iterable[MediaFile]) -> dict[str, dict[str, list[MediaFile]]]:
-    """Build lookup indexes by absolute path.
-
-    Missing XML source paths must stay offline. Do not fall back to file-name or
-    stem matching, because that can silently link the wrong local media.
-    """
-    by_path: dict[str, list[MediaFile]] = defaultdict(list)
+    """Build lookup indexes by file name only."""
+    by_name: dict[str, list[MediaFile]] = defaultdict(list)
 
     for media_file in media_files:
-        by_path[_normalize_path(media_file.path)].append(media_file)
+        by_name[media_file.name_key].append(media_file)
 
-    return {"path": dict(by_path)}
+    return {"name": dict(by_name)}
 
 
 def match_xml_clips_to_media(
     clips: Iterable[XmlClip],
     media_files: Iterable[MediaFile],
 ) -> list[MediaMatch]:
-    """Match XML clips to scanned media by exact decoded source path only."""
+    """Match XML clips to scanned media by file name only."""
     index = build_media_index(media_files)
     return [_match_clip(clip, index) for clip in clips]
 
@@ -181,11 +177,11 @@ def _is_proxy_media_from_probe(path: Path, probe: dict[str, str]) -> bool:
         return True
     return probe["is_prores_proxy"] == "1"
 def _match_clip(clip: XmlClip, index: dict[str, dict[str, list[MediaFile]]]) -> MediaMatch:
-    source_path_key = _normalize_decoded_source_path(clip.decoded_path)
-    if source_path_key:
-        path_candidates = index["path"].get(source_path_key, [])
-        if path_candidates:
-            return _candidate_match(clip, "matched_by_source_path", path_candidates)
+    clip_name_key = _normalize_clip_match_name(clip)
+    if clip_name_key:
+        name_candidates = index["name"].get(clip_name_key, [])
+        if name_candidates:
+            return _candidate_match(clip, "matched_by_filename", name_candidates)
 
     return MediaMatch(
         clip=clip,
@@ -194,8 +190,13 @@ def _match_clip(clip: XmlClip, index: dict[str, dict[str, list[MediaFile]]]) -> 
             Issue(
                 code="media_missing",
                 severity="ERROR",
-                message="No exact local media path matched the XML clip; it will be left offline.",
-                context={"clip_index": clip.index, "clip_name": clip.name, "source_path": clip.decoded_path},
+                message="No local media file name matched the XML clip; it will be left offline.",
+                context={
+                    "clip_index": clip.index,
+                    "clip_name": clip.name,
+                    "source_path": clip.decoded_path,
+                    "match_name": clip_name_key,
+                },
             )
         ],
     )
@@ -246,17 +247,20 @@ def _normalize_path(path: Path) -> str:
         return str(path.expanduser()).casefold()
 
 
-def _normalize_decoded_source_path(value: str) -> str:
-    if not value:
-        return ""
-    try:
-        return str(Path(value).expanduser().resolve()).casefold()
-    except OSError:
-        return str(Path(value).expanduser()).casefold()
-
-
 def _normalize_name(value: str) -> str:
     return value.strip().casefold()
+
+
+def _normalize_clip_match_name(clip: XmlClip) -> str:
+    if clip.decoded_path:
+        decoded_name = Path(clip.decoded_path).name
+        if decoded_name:
+            return _normalize_name(decoded_name)
+    if clip.pathurl:
+        raw_name = Path(clip.pathurl).name
+        if raw_name:
+            return _normalize_name(raw_name)
+    return _normalize_name(clip.name)
 
 
 def _unique_paths(paths: Iterable[Path]) -> list[Path]:

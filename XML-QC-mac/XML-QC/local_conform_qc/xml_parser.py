@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from urllib.parse import unquote, urlparse
 import re
 import xml.etree.ElementTree as ET
@@ -15,54 +15,22 @@ SPECIAL_PATH_CHARS = set("#?&[]{}'\"")
 
 
 def parse_xml(path: Path) -> XmlPrecheckResult:
-    """Parse xmeml clipitems and collect XML precheck issues."""
     xml_path = Path(path)
     tree = ET.parse(xml_path)
     root = tree.getroot()
-
     issues: list[Issue] = []
     if root.tag != "xmeml":
-        issues.append(
-            Issue(
-                code="xml_not_xmeml",
-                severity="ERROR",
-                message="XML root is not xmeml.",
-                context={"root_tag": root.tag, "xml_path": str(xml_path)},
-            )
-        )
-
+        issues.append(Issue(code="xml_not_xmeml", severity="ERROR", message="XML root is not xmeml.", context={"root_tag": root.tag, "xml_path": str(xml_path)}))
     sequence = root.find("sequence")
     sequence_name = _text(sequence, "name") if sequence is not None else ""
     sequence_timebase = _int_text(sequence, "rate/timebase") if sequence is not None else None
     if not sequence_name:
-        issues.append(
-            Issue(
-                code="xml_missing_sequence_name",
-                severity="WARNING",
-                message="Sequence name is empty or missing.",
-                context={"xml_path": str(xml_path)},
-            )
-        )
-
+        issues.append(Issue(code="xml_missing_sequence_name", severity="WARNING", message="Sequence name is empty or missing.", context={"xml_path": str(xml_path)}))
     clips = _extract_clips(root, issues)
     if not clips:
-        issues.append(
-            Issue(
-                code="xml_no_clipitems",
-                severity="ERROR",
-                message="No xmeml clipitem entries were found.",
-                context={"xml_path": str(xml_path)},
-            )
-        )
-
+        issues.append(Issue(code="xml_no_clipitems", severity="ERROR", message="No xmeml clipitem entries were found.", context={"xml_path": str(xml_path)}))
     issues.extend(_detect_global_issues(root, xml_path))
-    return XmlPrecheckResult(
-        xml_path=xml_path,
-        sequence_name=sequence_name,
-        sequence_timebase=sequence_timebase,
-        clips=clips,
-        issues=issues,
-    )
+    return XmlPrecheckResult(xml_path=xml_path, sequence_name=sequence_name, sequence_timebase=sequence_timebase, clips=clips, issues=issues)
 
 
 def _extract_clips(root: ET.Element, issues: list[Issue]) -> list[XmlClip]:
@@ -97,7 +65,6 @@ def decode_pathurl(pathurl: str) -> str:
     """Decode an xmeml file path URL to a filesystem-like path string."""
     if not pathurl:
         return ""
-
     decoded = unquote(pathurl)
     parsed = urlparse(decoded)
     if parsed.scheme != "file":
@@ -109,88 +76,29 @@ def decode_pathurl(pathurl: str) -> str:
     if parsed.fragment:
         path = f"{path}#{parsed.fragment}"
     if re.match(r"^/[A-Za-z]:/", path):
-        path = path[1:]
-    return path.replace("/", "\\") if re.match(r"^[A-Za-z]:/", path) else path
+        return str(PureWindowsPath(path[1:]))
+    return path
 
 
 def _detect_clip_issues(clip: XmlClip, clip_el: ET.Element) -> list[Issue]:
     issues: list[Issue] = []
     context = {"clip_index": clip.index, "clip_name": clip.name, "clip_id": clip.clip_id}
-
     if not clip.pathurl.strip():
-        issues.append(
-            Issue(
-                code="xml_empty_path",
-                severity="ERROR",
-                message="Clip has an empty file/pathurl.",
-                context=context,
-            )
-        )
-
+        issues.append(Issue(code="xml_empty_path", severity="ERROR", message="Clip has an empty file/pathurl.", context=context))
     decoded_lower = clip.decoded_path.lower()
     if any(marker in decoded_lower for marker in OLD_PATH_MARKERS):
-        issues.append(
-            Issue(
-                code="xml_old_path_marker",
-                severity="WARNING",
-                message="Clip path contains a marker that often indicates an old or temporary path.",
-                context={**context, "decoded_path": clip.decoded_path},
-            )
-        )
-
+        issues.append(Issue(code="xml_old_path_marker", severity="WARNING", message="Clip path contains a marker that often indicates an old or temporary path.", context={**context, "decoded_path": clip.decoded_path}))
     if _looks_like_mac_path(clip.pathurl, clip.decoded_path):
-        issues.append(
-            Issue(
-                code="xml_mac_path",
-                severity="WARNING",
-                message="Clip path appears to be a Mac-style path.",
-                context={**context, "decoded_path": clip.decoded_path},
-            )
-        )
-
+        issues.append(Issue(code="xml_mac_path", severity="WARNING", message="Clip path appears to be a Mac-style path.", context={**context, "decoded_path": clip.decoded_path}))
     if _has_cjk(clip.decoded_path):
-        issues.append(
-            Issue(
-                code="xml_chinese_path",
-                severity="WARNING",
-                message="Clip path contains Chinese characters.",
-                context={**context, "decoded_path": clip.decoded_path},
-            )
-        )
-
-    special_chars = sorted(
-        {char for char in f"{clip.pathurl}{clip.decoded_path}" if char in SPECIAL_PATH_CHARS}
-    )
+        issues.append(Issue(code="xml_chinese_path", severity="WARNING", message="Clip path contains Chinese characters.", context={**context, "decoded_path": clip.decoded_path}))
+    special_chars = sorted({char for char in f"{clip.pathurl}{clip.decoded_path}" if char in SPECIAL_PATH_CHARS})
     if special_chars:
-        issues.append(
-            Issue(
-                code="xml_special_chars_path",
-                severity="WARNING",
-                message="Clip path contains special characters that may affect relinking.",
-                context={**context, "decoded_path": clip.decoded_path, "characters": special_chars},
-            )
-        )
-
+        issues.append(Issue(code="xml_special_chars_path", severity="WARNING", message="Clip path contains special characters that may affect relinking.", context={**context, "decoded_path": clip.decoded_path, "characters": special_chars}))
     if _has_speed_effect(clip_el):
-        issues.append(
-            Issue(
-                code="xml_speed_effect",
-                severity="WARNING",
-                message="Clip has speed-related XML metadata.",
-                context=context,
-            )
-        )
-
+        issues.append(Issue(code="xml_speed_effect", severity="WARNING", message="Clip has speed-related XML metadata.", context=context))
     if clip_el.find(".//sequence") is not None:
-        issues.append(
-            Issue(
-                code="xml_nested_sequence",
-                severity="WARNING",
-                message="Clip contains a nested sequence.",
-                context=context,
-            )
-        )
-
+        issues.append(Issue(code="xml_nested_sequence", severity="WARNING", message="Clip contains a nested sequence.", context=context))
     return issues
 
 
@@ -198,25 +106,10 @@ def _detect_global_issues(root: ET.Element, xml_path: Path) -> list[Issue]:
     issues: list[Issue] = []
     transition_count = len(root.findall(".//transitionitem"))
     if transition_count:
-        issues.append(
-            Issue(
-                code="xml_transition",
-                severity="WARNING",
-                message="XML contains transition items.",
-                context={"xml_path": str(xml_path), "count": transition_count},
-            )
-        )
-
+        issues.append(Issue(code="xml_transition", severity="WARNING", message="XML contains transition items.", context={"xml_path": str(xml_path), "count": transition_count}))
     nested_sequences = max(0, len(root.findall(".//sequence")) - 1)
     if nested_sequences:
-        issues.append(
-            Issue(
-                code="xml_nested_sequence",
-                severity="WARNING",
-                message="XML contains nested sequence entries.",
-                context={"xml_path": str(xml_path), "count": nested_sequences},
-            )
-        )
+        issues.append(Issue(code="xml_nested_sequence", severity="WARNING", message="XML contains nested sequence entries.", context={"xml_path": str(xml_path), "count": nested_sequences}))
     return issues
 
 

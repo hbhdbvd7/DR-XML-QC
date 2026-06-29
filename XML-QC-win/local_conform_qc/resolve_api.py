@@ -15,7 +15,7 @@ MEDIA_POOL_FOLDERS = {
     "ref": "ref",
     "edit": "edit",
     "tc": "TC",
-    "look": "定调",
+    "look": "\u5b9a\u8c03",
 }
 IMPORTABLE_REF_EXTENSIONS = {
     ".aac",

@@ -1,4 +1,4 @@
-﻿"""GUI path selection boundary.
+"""GUI path selection boundary.
 
 GUI code belongs here and should only collect paths, not run business logic.
 """
@@ -12,11 +12,7 @@ from .models import ToolConfig
 
 
 def pick_config() -> ToolConfig:
-    """Return a GUI-selected config.
-
-    The GUI boundary only gathers paths and simple options; all processing
-    remains in the runner.
-    """
+    """Return a GUI-selected config."""
     root = Tk()
     root.withdraw()
     try:

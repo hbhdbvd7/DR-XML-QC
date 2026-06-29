@@ -1,4 +1,4 @@
-﻿"""Command-line parsing for local conform QC."""
+"""Command-line parsing for local conform QC."""
 
 from __future__ import annotations
 
